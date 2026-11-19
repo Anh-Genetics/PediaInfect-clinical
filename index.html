@@ -2342,19 +2342,40 @@
         dangerBox.textContent = '✓ Hiện không ghi nhận 4 dấu hiệu nguy hiểm toàn thân tối cấp cứu theo WHO IMCI.';
       }
 
-      // Tính điểm cảnh báo sớm PEWS
+      // Tính điểm cảnh báo sớm PEWS hiệu chỉnh phân tầng nhịp tim chuẩn PALS/PEWS theo 4 nhóm tuổi
       let respScore = 0;
       if (spo2 < 90 || (isFastBreathing && chestIndrawing && stridor)) respScore = 3;
       else if (spo2 < 94 || chestIndrawing || stridor) respScore = 2;
       else if (isFastBreathing) respScore = 1;
 
-      let cardioScore = 0;
-      if (crt >= 4 || hr >= 180 || hr < 60) cardioScore = 3;
-      else if (crt >= 3 || hr >= 150) cardioScore = 2;
-      else if (hr >= 130) cardioScore = 1;
+      let hrScore = 0;
+      let hrNormText = '80–140 ck/p';
+      if (ageMonths < 2) {
+        hrNormText = '100–170 ck/p (< 2 tháng)';
+        if (hr > 190 || hr < 90) hrScore = 3;
+        else if (hr > 180) hrScore = 2;
+        else if (hr > 170) hrScore = 1;
+      } else if (ageMonths < 12) {
+        hrNormText = '100–160 ck/p (2–11 tháng)';
+        if (hr > 185 || hr < 80) hrScore = 3;
+        else if (hr > 170) hrScore = 2;
+        else if (hr > 160) hrScore = 1;
+      } else if (ageMonths <= 60) {
+        hrNormText = '80–140 ck/p (1–5 tuổi)';
+        if (hr > 175 || hr < 70) hrScore = 3;
+        else if (hr > 155) hrScore = 2;
+        else if (hr > 140) hrScore = 1;
+      } else {
+        hrNormText = '70–120 ck/p (> 5 tuổi)';
+        if (hr > 155 || hr < 60) hrScore = 3;
+        else if (hr > 135) hrScore = 2;
+        else if (hr > 120) hrScore = 1;
+      }
+      const crtScore = crt >= 4 ? 3 : (crt >= 3 ? 2 : 0);
+      const cardioScore = Math.max(hrScore, crtScore);
 
       let neuroScore = 0;
-      if (avpu === 'P' || avpu === 'U' || document.getElementById('chkDangerLethargic').checked) neuroScore = 3;
+      if (avpu === 'P' || avpu === 'U' || document.getElementById('chkDangerLethargic').checked || document.getElementById('chkDangerConvulsion').checked) neuroScore = 3;
       else if (avpu === 'V') neuroScore = 2;
 
       const totalPews = respScore + cardioScore + neuroScore;
@@ -2368,20 +2389,21 @@
       document.getElementById('vitalPEWS').textContent = totalPews;
 
       const pewsBox = document.getElementById('pewsInterpretationBox');
-      if (totalPews >= 5) {
+      const isCriticalOverride = totalPews >= 5 || dangerList.length > 0 || spo2 < 90 || avpu === 'P' || avpu === 'U';
+      if (isCriticalOverride) {
         pewsBox.className = 'p-3.5 rounded-xl bg-red-50 border-2 border-red-500 text-red-950 text-xs space-y-1';
         pewsBox.innerHTML = `<div class="font-black text-red-800">PEWS = ${totalPews} ĐIỂM (Hô hấp: ${respScore} | Tim mạch: ${cardioScore} | Thần kinh: ${neuroScore}) — MỨC NGUY KỊCH</div>
-          <div>• Thở nhanh theo tuổi: <strong>${isFastBreathing ? 'CÓ (' + rr + ' ≥ ' + fastThreshold + ' ck/p)' : 'Không'}</strong> • Co lõm lồng ngực: <strong>${chestIndrawing ? 'CÓ' : 'Không'}</strong>.</div>
-          <div>• Chỉ định gọi Đội Phản ứng nhanh Nhi khoa / Chuyển Khoa Hồi sức Tích cực (PICU) ngay lập tức.</div>`;
+          <div>• Nhịp tim chuẩn tuổi: <strong>${hrNormText}</strong> • Thở nhanh WHO IMCI: <strong>${isFastBreathing ? 'CÓ (' + rr + ' ≥ ' + fastThreshold + ' ck/p)' : 'Không'}</strong> • Co lõm lồng ngực: <strong>${chestIndrawing ? 'CÓ' : 'Không'}</strong>.</div>
+          <div>• Chỉ định kích hoạt Đội Phản ứng nhanh Nhi khoa / Chuyển Hồi sức Tích cực (PICU) ngay lập tức, bảo vệ đường thở &amp; tuần hoàn.</div>`;
       } else if (totalPews >= 3) {
         pewsBox.className = 'p-3.5 rounded-xl bg-amber-50 border-2 border-amber-400 text-amber-950 text-xs space-y-1';
         pewsBox.innerHTML = `<div class="font-black text-amber-900">PEWS = ${totalPews} ĐIỂM (Hô hấp: ${respScore} | Tim mạch: ${cardioScore} | Thần kinh: ${neuroScore}) — CẢNH BÁO TRUNG BÌNH - CAO</div>
-          <div>• Thở nhanh theo tuổi: <strong>${isFastBreathing ? 'CÓ (' + rr + ' ≥ ' + fastThreshold + ' ck/p)' : 'Không'}</strong> • Co lõm lồng ngực: <strong>${chestIndrawing ? 'CÓ' : 'Không'}</strong>.</div>
-          <div>• Tăng tần suất theo dõi sinh hiệu mỗi 1–2 giờ, hỗ trợ Oxy khi SpO2 &lt; 94% và bác sĩ chuyên khoa đánh giá trực tiếp.</div>`;
+          <div>• Nhịp tim chuẩn tuổi: <strong>${hrNormText}</strong> • Thở nhanh WHO IMCI: <strong>${isFastBreathing ? 'CÓ (' + rr + ' ≥ ' + fastThreshold + ' ck/p)' : 'Không'}</strong> • Co lõm lồng ngực: <strong>${chestIndrawing ? 'CÓ' : 'Không'}</strong>.</div>
+          <div>• Theo dõi sinh hiệu mỗi 1–2 giờ, hỗ trợ Oxy khi SpO2 &lt; 94% và bác sĩ chuyên khoa thăm khám đánh giá lại trong 15–30 phút.</div>`;
       } else {
         pewsBox.className = 'p-3.5 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 text-xs space-y-1';
         pewsBox.innerHTML = `<div class="font-black text-emerald-900">PEWS = ${totalPews} ĐIỂM (Hô hấp: ${respScore} | Tim mạch: ${cardioScore} | Thần kinh: ${neuroScore}) — MỨC ỔN ĐỊNH</div>
-          <div>• Nhịp thở hiện tại (${rr} ck/p) dưới ngưỡng thở nhanh WHO (${fastThreshold} ck/p). Tiếp tục theo dõi thường quy.</div>`;
+          <div>• Nhịp tim (${hr} ck/p, chuẩn ${hrNormText}) và nhịp thở (${rr} ck/p, ngưỡng WHO &lt; ${fastThreshold}) trong giới hạn ổn định. Tiếp tục theo dõi định kỳ.</div>`;
       }
 
       // 2. Stepwise Diagnostic Protocol (Chặn lạm dụng Panel Sinh học phân tử đắt tiền)
@@ -2429,34 +2451,55 @@
 
       const respPathogens = respPcr.detected_pathogens || [];
       const giPathogens = giPcr.detected_pathogens || [];
-      const hasColonizationCandidate = respPathogens.some(x => /rhinovirus|adenovirus|enterovirus/i.test(x)) || giPathogens.length >= 2;
-      const lowHostInflammation = wbc <= 10 && neu < 60 && crp < 10 && pct < 0.25 && !s.toxic_appearance;
+      const neuroPathogens = (lab && lab.Multiplex_PCR_Meningitis_JSON && lab.Multiplex_PCR_Meningitis_JSON.detected_pathogens) || [];
+      const allPathogensStr = respPathogens.concat(giPathogens).concat(neuroPathogens).join(' ').toLowerCase();
+      const hasAtypicalBacteria = /mycoplasma|chlamydia|bordetella|pertussis|legionella/i.test(allPathogensStr);
+      const hasStec = /stec|o157|shiga/i.test(allPathogensStr + ' ' + (patient.Clinical_Diagnosis || ''));
+      const isSalivaContam = Number(respPcr.squamous_epithelial_per_lpf || 0) >= 25;
+      const isNeonatalOrLeukopenicSepsis = (ageMonths < 1 && (wbc < 5 || wbc > 20 || pct >= 0.5 || s.toxic_appearance)) || (wbc < 4 && (pct >= 0.5 || s.toxic_appearance));
+      const hasColonizationCandidate = isSalivaContam || respPathogens.some(x => /rhinovirus|bocavirus|adenovirus|enterovirus/i.test(x)) || giPathogens.length >= 2;
+      const ageWbcLimit = ageMonths < 1 ? 20 : (ageMonths < 12 ? 15 : 11);
+      const lowHostInflammation = wbc >= 4 && wbc <= ageWbcLimit && neu < 60 && crp < 10 && pct < 0.25 && !s.toxic_appearance;
 
       const colBadge = document.getElementById('colonizationBadge');
       const colBox = document.getElementById('colonizationConclusionBox');
 
-      if (hasColonizationCandidate && lowHostInflammation) {
-        colBadge.className = 'px-3 py-1 rounded-full bg-teal-300 text-slate-950 text-xs font-black';
-        colBadge.textContent = 'THƯỜNG TRÚ / BÀI XUẤT VIRUS KÉO DÀI';
-        colBox.className = 'p-4 rounded-xl bg-teal-50 border-2 border-teal-500 text-teal-950 text-xs leading-relaxed space-y-1.5';
+      if (hasStec) {
+        colBadge.className = 'px-3 py-1 rounded-full bg-rose-600 text-white text-xs font-black';
+        colBadge.textContent = 'CHỐNG CHỈ ĐỊNH KHÁNG SINH (STEC)';
+        colBox.className = 'p-4 rounded-xl bg-rose-50 border-2 border-rose-500 text-rose-950 text-xs leading-relaxed space-y-1.5';
         colBox.innerHTML = `
-          <div class="font-black text-sm">💡 GỢI Ý THUẬT TOÁN ĐỐI CHIẾU LÂM SÀNG - VI SINH:</div>
-          <p class="font-bold">"Nhiều khả năng là bài xuất virus kéo dài hoặc thường trú; không có bằng chứng nhiễm khuẩn xâm lấn. Khuyến cáo KHÔNG dùng kháng sinh."</p>
-          <p class="text-teal-900">Giải thích: Mặc dù Panel Sinh học phân tử phát hiện <strong>${respPathogens.concat(giPathogens).join(', ')}</strong>, nhưng toàn bộ chỉ điểm viêm của vật chủ đều âm tính (WBC ${wbc} ≤ 10×10⁹/L, Neutrophil ${neu}% &lt; 60%, CRP ${crp} &lt; 10 mg/L, Procalcitonin ${pct} &lt; 0.25 ng/mL) và lâm sàng không nhiễm độc.</p>`;
-      } else if (pct >= 0.5 || crp >= 40 || wbc >= 15) {
-        colBadge.className = 'px-3 py-1 rounded-full bg-red-400 text-slate-950 text-xs font-black';
+          <div class="font-black text-rose-800">🚨 CHỐNG CHỈ ĐỊNH TUYỆT ĐỐI KHÁNG SINH &amp; THUỐC CẦM TIÊU CHẢY:</div>
+          <p>Phát hiện <strong>E. coli sinh độc tố Shiga (STEC)</strong>. Dùng kháng sinh làm ly giải vi khuẩn, phóng thích ồ ạt độc tố Shiga và tăng nguy cơ Hội chứng tán huyết tăng ure máu (HUS). Chỉ bù dịch, theo dõi sát tiểu cầu, hemoglobin và creatinin.</p>`;
+      } else if (hasAtypicalBacteria) {
+        colBadge.className = 'px-3 py-1 rounded-full bg-indigo-500 text-white text-xs font-black';
+        colBadge.textContent = 'VI KHUẨN KHÔNG ĐIỂN HÌNH — CẦN KHÁNG SINH ĐÍCH';
+        colBox.className = 'p-4 rounded-xl bg-indigo-50 border-2 border-indigo-400 text-indigo-950 text-xs leading-relaxed space-y-1.5';
+        colBox.innerHTML = `
+          <div class="font-black text-indigo-900">🎯 VI KHUẨN KHÔNG ĐIỂN HÌNH (${respPathogens.join(', ')}):</div>
+          <p>Lưu ý lâm sàng quan trọng: Vi khuẩn không điển hình thường có <strong>WBC và Procalcitonin bình thường/tăng nhẹ</strong> (PCT ${pct} ng/mL) nhưng <strong>BẮT BUỘC dùng kháng sinh đích</strong> (Beta-lactam KHÔNG có tác dụng). Tại Việt Nam/Đông Á, tỷ lệ <em>M. pneumoniae</em> mang đột biến 23S rRNA (A2063G) kháng Macrolide lên tới 80–90%: nếu không hạ sốt sau 48–72 giờ dùng Azithromycin, cân nhắc chuyển <strong>Doxycycline</strong> (an toàn liệu trình &lt;21 ngày theo AAP Red Book) hoặc Levofloxacin.</p>`;
+      } else if (isNeonatalOrLeukopenicSepsis || pct >= 0.5 || crp >= 40 || (wbc > ageWbcLimit * 1.35)) {
+        colBadge.className = 'px-3 py-1 rounded-full bg-red-500 text-white text-xs font-black';
         colBadge.textContent = 'NHIỄM KHUẨN XÂM LẤN THỰC SỰ';
         colBox.className = 'p-4 rounded-xl bg-red-50 border-2 border-red-400 text-red-950 text-xs leading-relaxed space-y-1.5';
         colBox.innerHTML = `
           <div class="font-black">🚨 BẰNG CHỨNG NHIỄM TRÙNG XÂM LẤN / BỘI NHIỄM VI KHUẨN RÕ RỆT:</div>
-          <p>Các chỉ điểm đáp ứng viêm hệ thống tăng cao (WBC ${wbc} G/L, Neutrophil ${neu}%, CRP ${crp} mg/L, Procalcitonin ${pct} ng/mL). Chỉ định kháng sinh theo phân tầng <strong>Quyết định 5631/QĐ-BYT &amp; WHO AWaRe</strong> và điều chỉnh đích theo kết quả <strong>Nuôi cấy vi sinh và Kháng sinh đồ (AST)</strong>.</p>`;
+          <p>Đáp ứng viêm hệ thống rõ hoặc nguy cơ nhiễm khuẩn huyết sơ sinh/giảm bạch cầu (WBC ${wbc} G/L [ngưỡng tuổi ≤ ${ageWbcLimit}], Neu ${neu}%, CRP ${crp} mg/L, PCT ${pct} ng/mL). Khởi trị kháng sinh theo phân tầng <strong>QĐ 5631/QĐ-BYT &amp; WHO AWaRe</strong> và xuống thang theo <strong>Nuôi cấy vi sinh và Kháng sinh đồ</strong>.${ageMonths < 1 ? ' <strong class="text-rose-800">Lưu ý sơ sinh &lt;28 ngày: CHỐNG CHỈ ĐỊNH Ceftriaxone (nguy cơ vàng da nhân não &amp; kết tủa canxi), dùng Ampicillin + Cefotaxime.</strong>' : ''}</p>`;
+      } else if (hasColonizationCandidate && lowHostInflammation) {
+        colBadge.className = 'px-3 py-1 rounded-full bg-teal-300 text-slate-950 text-xs font-black';
+        colBadge.textContent = 'THƯỜNG TRÚ / BÀI XUẤT VIRUS KÉO DÀI';
+        colBox.className = 'p-4 rounded-xl bg-teal-50 border-2 border-teal-500 text-teal-950 text-xs leading-relaxed space-y-1.5';
+        colBox.innerHTML = `
+          <div class="font-black text-sm">💡 GỢI Ý ĐỐI CHIẾU LÂM SÀNG - VI SINH:</div>
+          <p class="font-bold">"Nhiều khả năng là bài xuất virus kéo dài, thường trú vùng tỵ hầu hoặc mẫu lẫn nước bọt; không có bằng chứng nhiễm khuẩn xâm lấn. Khuyến cáo KHÔNG dùng kháng sinh."</p>
+          <p class="text-teal-900">Cơ sở biện luận: Panel phát hiện <strong>${respPathogens.concat(giPathogens).join(', ')}</strong>${isSalivaContam ? ' (lưu ý mẫu có ' + respPcr.squamous_epithelial_per_lpf + ' TB biểu mô vảy/vi trường — ngoại nhiễm nước bọt)' : ''}, nhưng chỉ điểm viêm vật chủ trong giới hạn bình thường theo tuổi (WBC ${wbc} G/L, Neu ${neu}%, CRP ${crp} mg/L, PCT ${pct} ng/mL) và trẻ không nhiễm độc.</p>`;
       } else {
         colBadge.className = 'px-3 py-1 rounded-full bg-sky-300 text-slate-950 text-xs font-black';
         colBadge.textContent = 'NHIỄM VIRUS CẤP TÍNH ĐIỂN HÌNH';
         colBox.className = 'p-4 rounded-xl bg-sky-50 border-2 border-sky-300 text-sky-950 text-xs leading-relaxed space-y-1.5';
         colBox.innerHTML = `
-          <div class="font-black">✓ BỆNH CẢNH NHIỄM VIRUS CẤP TÍNH (PROCALCITONIN ${pct} ng/mL &lt; 0.25):</div>
-          <p>Khuyến cáo điều trị hỗ trợ tối ưu (bù dịch, hạ sốt, thông thoáng đường thở), KHÔNG sử dụng kháng sinh dự phòng bội nhiễm thường quy.</p>`;
+          <div class="font-black">✓ BỆNH CẢNH NHIỄM VIRUS CẤP TÍNH (PROCALCITONIN ${pct} ng/mL &lt; 0.5):</div>
+          <p>Khuyến cáo điều trị hỗ trợ tối ưu (bù dịch, hạ sốt, thông thoáng đường thở), KHÔNG sử dụng kháng sinh dự phòng bội nhiễm thường quy theo QĐ 5631/QĐ-BYT.</p>`;
       }
 
       // 4. Quản lý Bệnh lý theo mùa cập nhật (Dengue QĐ 2760, TCM BYT, Tiêu chảy IMCI)
@@ -2471,35 +2514,65 @@
       // Card 1: Sốt xuất huyết Dengue (QĐ 2760/QĐ-BYT)
       const hct = Number(cbc.HCT_Percent || 36);
       const baseHct = Number(cbc.Baseline_HCT_Percent || 35.5);
-      const hctRise = (((hct - baseHct) / baseHct) * 100).toFixed(1);
+      const hctRiseNum = ((hct - baseHct) / baseHct) * 100;
+      const hctRise = hctRiseNum.toFixed(1);
       const plt = Number(cbc.Platelets || 220);
       const day = Number(s.day_of_illness || 3);
       const ringerRate = Math.round(w * 6);
+      const diagLow = String(patient.Clinical_Diagnosis || '').toLowerCase();
+      const isDengueCase = Boolean(s.dengue_suspected) || diagLow.includes('dengue') || diagLow.includes('sốt xuất huyết');
+      const isDengueSevere = isDengueCase && (Number(v.crt_seconds || 2) >= 3 || diagLow.includes('sốc') || plt < 20);
+      const isDengueWarning = isDengueCase && !isDengueSevere && (s.abdominal_pain_tenderness || s.mucosal_bleeding || s.persistent_vomiting || s.hepatomegaly_gt_2cm || hctRiseNum >= 20 || plt < 100);
+      const dengueStageLabel = isDengueSevere ? 'SXH Dengue NẶNG' : (isDengueWarning ? 'Có dấu hiệu cảnh báo' : `Ngày thứ ${day}`);
 
       const dengueCard = document.getElementById('seasonalDengueCard');
-      const isDengueCase = patient.Patient_ID === 'BN02' || Boolean(s.dengue_suspected);
       dengueCard.className = isDengueCase
         ? 'p-4 rounded-xl border-2 border-red-500 bg-red-50 space-y-2 text-xs shadow-sm'
         : 'p-4 rounded-xl border-2 border-slate-200 bg-slate-50 space-y-2 text-xs';
       dengueCard.innerHTML = `
         <div class="flex items-center justify-between border-b border-slate-200 pb-2">
           <span class="font-black text-sm text-slate-950">🦟 Sốt xuất huyết Dengue (QĐ 2760/QĐ-BYT)</span>
-          <span class="px-2 py-0.5 rounded text-[10px] font-black ${day >= 3 && day <= 7 ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-800'}">Ngày thứ ${day}</span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-black ${isDengueCase ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-800'}">${dengueStageLabel}</span>
         </div>
         <div class="text-slate-800 leading-relaxed">
-          • <strong>Cô đặc máu (HCT):</strong> ${hct}% (Nền: ${baseHct}% → Tăng <strong>${hctRise}%</strong> ${hctRise >= 20 ? '⚠️ ≥20%' : ''})<br/>
-          • <strong>Tiểu cầu (PLT):</strong> <strong>${plt} G/L</strong> ${plt < 100 ? '🚨 Giảm nhanh &lt;100 G/L' : ''}<br/>
-          • <strong>Phác đồ bù dịch chuẩn:</strong> Khi có dấu hiệu cảnh báo &amp; cô đặc máu, truyền <strong>Ringer Lactate / NaCl 0.9% liều 6–7 ml/kg/giờ (~${ringerRate} ml/giờ</strong> cho trẻ ${w} kg) trong 1–3 giờ, sau đó giảm 5 ml/kg/h → 3 ml/kg/h theo HCT.
+          • <strong>Cô đặc máu (HCT):</strong> ${hct}% (Nền: ${baseHct}% → Tăng <strong>${hctRise}%</strong> ${hctRiseNum >= 20 ? '⚠️ ≥20%' : ''}) • <strong>Tiểu cầu:</strong> <strong>${plt} G/L</strong> ${plt < 100 ? '🚨 &lt;100 G/L' : ''}<br/>
+          • <strong>Bù dịch QĐ 2760/QĐ-BYT:</strong> ${isDengueSevere ? `Chống sốc ngay <strong>Ringer Lactate 15–20 ml/kg/giờ (~${Math.round(w*20)} ml/giờ)</strong> và đánh giá lại HCT/mạch sau 1 giờ.` : `Có dấu hiệu cảnh báo: <strong>Ringer Lactate / NaCl 0,9% 6–7 ml/kg/giờ (~${ringerRate} ml/giờ)</strong> trong 1–3 giờ, sau đó giảm 5 → 3 ml/kg/h theo HCT.`}<br/>
+          • <strong>An toàn thuốc:</strong> Chỉ hạ sốt bằng Paracetamol; <strong>CHỐNG CHỈ ĐỊNH tuyệt đối Aspirin &amp; Ibuprofen</strong>.
         </div>`;
 
-      // Card 2: Tay chân miệng (Hướng dẫn Bộ Y tế)
+      // Card 2: Tay chân miệng (Hướng dẫn Bộ Y tế cập nhật 6 phân độ: 1, 2a, 2b-1, 2b-2, 3, 4)
       const startle30m = Number(s.startle_per_30min || 0);
       const temp = Number(v.temperature_c || 38.0);
       const hr = Number(v.heart_rate || 120);
-      const isHfmdCase = patient.Patient_ID === 'BN03' || Boolean(s.hfmd_lesions);
-      let hfmdGradeText = 'Độ 1 / Độ 2a (Theo dõi giật mình & sốt)';
-      if (hr > 150 || (temp >= 39.5 && startle30m >= 2)) {
-        hfmdGradeText = 'Độ 2b Nhóm 1–2 (Giật mình ≥ 2 lần/30p, sốt cao ≥ 39.5°C khó hạ, mạch nhanh)';
+      const spo2Val = Number(v.spo2 || 98);
+      const isHfmdCase = Boolean(s.hfmd_lesions) || diagLow.includes('tay chân miệng') || diagLow.includes('ev71');
+      let hfmdBadge = 'Phân tầng BYT';
+      let hfmdGradeText = 'Độ 1 (Chỉ loét miệng/phát ban da — theo dõi ngoại trú)';
+      let hfmdAction = 'Chăm sóc tại nhà, tái khám mỗi 1–2 ngày và hướng dẫn dấu hiệu chuyển độ.';
+      if (isHfmdCase) {
+        if (spo2Val < 92 || Number(v.crt_seconds || 2) >= 3 || diagLow.includes('độ 4') || diagLow.includes('phù phổi')) {
+          hfmdBadge = 'ĐỘ 4 — TỐI KHẨN';
+          hfmdGradeText = 'Độ 4 (Sốc, phù phổi cấp, tím tái, SpO2 < 92%)';
+          hfmdAction = 'Đặt nội khí quản thở máy ngay, chống sốc (Dobutamine/Milrinone), <strong>IVIG 1 g/kg/ngày × 2 ngày</strong>, lọc máu nếu cần.';
+        } else if (hr > 170 || diagLow.includes('độ 3') || spo2Val < 94) {
+          hfmdBadge = 'ĐỘ 3 — PICU';
+          hfmdGradeText = 'Độ 3 (Rối loạn thần kinh thực vật: mạch >170 ck/p, vã mồ hôi, tăng HA, rối loạn nhịp thở)';
+          hfmdAction = 'Chuyển PICU ngay, thở Oxy/CPAP/NKQ sớm, <strong>Phenobarbital 10–20 mg/kg TM</strong>, <strong>IVIG 1 g/kg/ngày × 2 ngày</strong>, Milrinone nếu tăng HA/mạch nhanh.';
+        } else if (s.ataxia_tremor_limb_weakness || diagLow.includes('nhóm 2')) {
+          hfmdBadge = 'Độ 2b Nhóm 2';
+          hfmdGradeText = 'Độ 2b Nhóm 2 (Thất điều, run chi, đi loạng choạng, yếu liệt chi, rung giật nhãn cầu)';
+          hfmdAction = 'Nằm đầu cao 30°, thở Oxy, <strong>Phenobarbital 10–20 mg/kg TM</strong> và chỉ định <strong>IVIG 1 g/kg/ngày</strong> ngay.';
+        } else if (startle30m >= 2 || hr > 150 || (temp >= 39.0 && s.refractory_fever) || diagLow.includes('2b')) {
+          hfmdBadge = 'Độ 2b Nhóm 1';
+          hfmdGradeText = 'Độ 2b Nhóm 1 (Giật mình ≥ 2 lần/30p, sốt cao khó hạ, mạch >130–150 ck/p)';
+          hfmdAction = '<strong>Phenobarbital 10–20 mg/kg TM</strong> (lặp lại sau 8–12h nếu còn giật mình), đánh giá chỉ định <strong>IVIG 1 g/kg/ngày</strong> nếu không giảm sau 6 giờ.';
+        } else if (Number(s.startle_history_24h || 0) >= 1 || temp >= 39.0 || diagLow.includes('2a')) {
+          hfmdBadge = 'Độ 2a';
+          hfmdGradeText = 'Độ 2a (Bệnh sử giật mình < 2 lần/30p, sốt >2 ngày hoặc ≥ 39°C, nôn nhiều, lừ đừ)';
+          hfmdAction = 'Nhập viện theo dõi sát, <strong>Phenobarbital 5–7 mg/kg/ngày</strong> đường uống, đánh giá chuyển độ mỗi 4–6 giờ.';
+        } else {
+          hfmdBadge = 'Độ 1';
+        }
       }
 
       const hfmdCard = document.getElementById('seasonalHfmdCard');
@@ -2508,20 +2581,25 @@
         : 'p-4 rounded-xl border-2 border-slate-200 bg-slate-50 space-y-2 text-xs';
       hfmdCard.innerHTML = `
         <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-          <span class="font-black text-sm text-slate-950">🖐️ Bệnh Tay chân miệng (QĐ Bộ Y tế)</span>
-          <span class="px-2 py-0.5 rounded bg-amber-500 text-slate-950 text-[10px] font-black">${isHfmdCase ? 'Độ 2b Nhóm 1' : 'Phân tầng BYT'}</span>
+          <span class="font-black text-sm text-slate-950">🖐️ Bệnh Tay chân miệng (Hướng dẫn BYT)</span>
+          <span class="px-2 py-0.5 rounded bg-amber-500 text-slate-950 text-[10px] font-black">${hfmdBadge}</span>
         </div>
         <div class="text-slate-800 leading-relaxed">
           • <strong>Phân độ hiện tại:</strong> ${hfmdGradeText}<br/>
-          • <strong>Ghi nhận lâm sàng:</strong> Giật mình ${startle30m} lần/30 phút • Sốt ${temp}°C • Mạch ${hr} ck/phút.<br/>
-          • <strong>Xử trí đích:</strong> Chỉ định <strong>Phenobarbital</strong> (10–20 mg/kg tĩnh mạch ở Độ 2b; 5–7 mg/kg/ngày uống ở Độ 2a), truyền <strong>IVIG 1g/kg/ngày</strong> khi Độ 2b nhóm 2 hoặc nhóm 1 tiến triển nhanh do EV71, chuyển Hồi sức tích cực.
+          • <strong>Lâm sàng:</strong> Giật mình ${startle30m} lần/30p • Sốt ${temp}°C • Mạch ${hr} ck/p • SpO2 ${spo2Val}%.<br/>
+          • <strong>Xử trí đích:</strong> ${hfmdAction}
         </div>`;
 
-      // Card 3: Tiêu chảy cấp & Viêm phổi (WHO IMCI Phác đồ A-B-C)
+      // Card 3: Tiêu chảy cấp & Bù dịch WHO IMCI Phác đồ A-B-C (Chuẩn thời gian theo tuổi!)
       const dehyd = String(s.dehydration_grade || 'NONE').toUpperCase();
-      const zincMg = Number(patient.Age_Months) < 6 ? 10 : 20;
-      const planCMl = Math.round(w * 100);
+      const ageMVal = Number(patient.Age_Months || 12);
+      const zincMg = ageMVal < 6 ? 10 : 20;
+      const planCMl30 = Math.round(w * 30);
+      const planCMl70 = Math.round(w * 70);
       const planBMl = Math.round(w * 75);
+      const planCTiming = ageMVal < 12
+        ? `trẻ &lt;12 tháng: <strong>${planCMl30} ml trong 1 giờ</strong> đầu, sau đó <strong>${planCMl70} ml trong 5 giờ</strong> (tổng 6 giờ)`
+        : `trẻ ≥12 tháng: <strong>${planCMl30} ml trong 30 phút</strong> đầu, sau đó <strong>${planCMl70} ml trong 2 giờ 30 phút</strong> (tổng 3 giờ)`;
 
       const diarrheaCard = document.getElementById('seasonalDiarrheaCard');
       const isGiCase = patient.Syndrome_Category === 'Tiêu hóa';
@@ -2534,9 +2612,9 @@
           <span class="px-2 py-0.5 rounded bg-teal-600 text-white text-[10px] font-black">Mất nước: ${dehyd}</span>
         </div>
         <div class="text-slate-800 leading-relaxed">
-          • <strong>Phác đồ A-B-C:</strong> ${dehyd === 'SEVERE' ? `Phác đồ C (Mất nước nặng): Truyền Ringer Lactate 100 ml/kg (~${planCMl} ml: 30 ml/kg giai đoạn 1 + 70 ml/kg giai đoạn 2)` : `Phác đồ B (75 ml/kg ~ ${planBMl} ml Oresol trong 4h) / Phác đồ A tại nhà`}.<br/>
-          • <strong>Oresol chuẩn:</strong> Dùng Oresol áp lực thẩm thấu thấp <strong>245 mOsm/L</strong>.<br/>
-          • <strong>Bổ sung Kẽm:</strong> <strong>${zincMg} mg/ngày × 10–14 ngày</strong> liên tục.
+          • <strong>Phác đồ A-B-C:</strong> ${dehyd === 'SEVERE' ? `Phác đồ C (Mất nước nặng) — Truyền Ringer Lactate 100 ml/kg (${planCTiming}).` : (dehyd === 'SOME' ? `Phác đồ B (Có mất nước) — Uống Oresol 75 ml/kg (~<strong>${planBMl} ml</strong>) trong 4 giờ.` : 'Phác đồ A — Bù dịch Oresol tại nhà sau mỗi lần đi ngoài lỏng.')}<br/>
+          • <strong>Oresol chuẩn &amp; Kẽm:</strong> Oresol áp lực thẩm thấu thấp <strong>245 mOsm/L</strong> + Kẽm <strong>${zincMg} mg/ngày × 10–14 ngày</strong>.<br/>
+          • <strong>An toàn:</strong> KHÔNG dùng thuốc cầm tiêu chảy (Loperamide) và KHÔNG dùng kháng sinh khi nghi virus hoặc STEC O157.
         </div>`;
     }
 
@@ -2597,10 +2675,14 @@
         </div>
       `;
 
-      // Chạy thuật toán kiểm tra chéo mâu thuẫn, Delta Check và Critical Values
+      // Chạy thuật toán kiểm tra chéo mâu thuẫn tế bào - SHPT (có hiệu chỉnh ngưỡng sơ sinh & bẫy ciHHV-6)
       const neuroList = neuro.detected_pathogens || [];
-      const hasBacteriaInCsfPcr = neuroList.some(p => /streptococcus pneumoniae|neisseria meningitidis|haemophilus influenzae/i.test(p));
-      const csfNormal = csf.performed && Number(csf.WBC_cells_uL) < 5 && Number(csf.Protein_gL) < 0.45 && Number(csf.Glucose_CSF_Blood_Ratio) > 0.6;
+      const hasBacteriaInCsfPcr = neuroList.some(p => /streptococcus pneumoniae|neisseria meningitidis|haemophilus influenzae|escherichia coli|streptococcus agalactiae|listeria/i.test(p));
+      const hasHhv6InCsf = neuroList.some(p => /hhv-6|human herpesvirus 6/i.test(p));
+      const isNeonate = Number(patient.Age_Months || 12) < 1;
+      const csfWbcNormLimit = isNeonate ? 20 : 5;
+      const csfProtNormLimit = isNeonate ? 1.2 : 0.45;
+      const csfNormal = csf.performed && Number(csf.WBC_cells_uL) < csfWbcNormLimit && Number(csf.Protein_gL) < csfProtNormLimit && Number(csf.Glucose_CSF_Blood_Ratio) >= 0.55;
 
       const discordanceBox = document.getElementById('labDiscordanceContainer');
       const discordanceItems = [];
@@ -2608,9 +2690,17 @@
       if (hasBacteriaInCsfPcr && csfNormal) {
         discordanceItems.push(`
           <div class="p-3.5 rounded-xl bg-red-50 border-2 border-red-600 text-red-950 space-y-1">
-            <div class="font-black text-red-700 uppercase">🚨 CẢNH BÁO ĐỎ CHẶN KÝ DUYỆT (CSF DISCORDANCE RULE):</div>
-            <p class="font-bold">"Mâu thuẫn tế bào - sinh học phân tử. Nghi ngờ ngoại nhiễm mẫu hoặc kết quả dương tính giả kỹ thuật. Yêu cầu kiểm tra lại mẫu trước khi ký duyệt."</p>
-            <p class="text-[11px] text-red-800">Chi tiết: Panel PCR DNT (+) với vi khuẩn sinh mủ (${neuroList.join(', ')}) nhưng Tế bào DNT = ${csf.WBC_cells_uL} TB/µL (&lt; 5), Protein = ${csf.Protein_gL} g/L (&lt; 0.45) và Tỷ lệ Glucose DNT/Máu = ${csf.Glucose_CSF_Blood_Ratio} (&gt; 0.6).</p>
+            <div class="font-black text-red-700 uppercase">🚨 CẢNH BÁO ĐỎ CHẶN KÝ DUYỆT (MÂU THUẪN DNT — SHPT):</div>
+            <p class="font-bold">"Mâu thuẫn tế bào học — sinh học phân tử. Nghi ngờ ngoại nhiễm mẫu / dương tính giả kỹ thuật (hoặc giai đoạn tối cấp sớm của Não mô cầu). Yêu cầu kiểm tra lại mẫu và đối chiếu lâm sàng trước khi ký duyệt."</p>
+            <p class="text-[11px] text-red-800">Chi tiết: Panel PCR DNT (+) với vi khuẩn sinh mủ (${neuroList.join(', ')}) nhưng Tế bào DNT = ${csf.WBC_cells_uL} TB/µL (&lt; ${csfWbcNormLimit}), Protein = ${csf.Protein_gL} g/L (&lt; ${csfProtNormLimit}) và Tỷ lệ Glucose DNT/Máu = ${csf.Glucose_CSF_Blood_Ratio}.</p>
+          </div>`);
+      }
+
+      if (hasHhv6InCsf && csfNormal) {
+        discordanceItems.push(`
+          <div class="p-3.5 rounded-xl bg-amber-50 border-2 border-amber-500 text-amber-950 space-y-1">
+            <div class="font-black text-amber-900 uppercase">⚠️ CẢNH BÁO BẪY DI TRUYỀN — SHPT (ciHHV-6):</div>
+            <p>Phát hiện <strong>HHV-6</strong> trong DNT nhưng tế bào và hóa sinh DNT hoàn toàn bình thường. Cần định lượng DNA HHV-6 máu toàn phần (&gt;10⁶ copies/mL) hoặc xét nghiệm nang tóc để loại trừ tích hợp nhiễm sắc thể di truyền (ciHHV-6) trước khi dùng Ganciclovir.</p>
           </div>`);
       }
 
@@ -2645,19 +2735,31 @@
         ? deltaItems.join('')
         : `<div class="p-3.5 rounded-xl bg-slate-50 border-2 border-slate-200 text-slate-800 font-semibold">✓ Biến thiên lịch sử (Delta Check 12–24h) của Tiểu cầu, Men gan và Toan kiềm nằm trong giới hạn an toàn.</div>`;
 
-      // 3. Báo động Giá trị Nguy kịch (Thông tư 43/2018/TT-BYT)
+      // 3. Báo động Giá trị Nguy kịch đầy đủ theo Thông tư 43/2018/TT-BYT
       const critBox = document.getElementById('labCriticalValuesContainer');
       const critList = [];
       if (Number(cbc.Platelets) > 0 && Number(cbc.Platelets) < 50) {
-        critList.push(`Tiểu cầu = ${cbc.Platelets} × 10⁹/L (< 50 G/L)`);
+        critList.push(`Tiểu cầu giảm nguy kịch = ${cbc.Platelets} G/L (< 50 G/L)`);
       }
-      if (Number(markers.Lactate_mmolL) > 4.0) {
-        critList.push(`Lactate máu = ${markers.Lactate_mmolL} mmol/L (> 4.0 mmol/L)`);
+      if (Number(cbc.HGB) > 0 && Number(cbc.HGB) < 7.0) {
+        critList.push(`Hemoglobin thiếu máu nặng = ${cbc.HGB} g/dL (< 7,0 g/dL)`);
+      }
+      if (Number(cbc.WBC) > 0 && (Number(cbc.WBC) < 2.0 || Number(cbc.WBC) > 30.0)) {
+        critList.push(`Bạch cầu bất thường nguy kịch = ${cbc.WBC} G/L (< 2,0 hoặc > 30 G/L)`);
+      }
+      if (Number(markers.Procalcitonin_ngmL) >= 10.0) {
+        critList.push(`Procalcitonin tăng rất cao = ${markers.Procalcitonin_ngmL} ng/mL (nguy cơ sốc nhiễm khuẩn)`);
+      }
+      if (Number(markers.Lactate_mmolL) >= 4.0) {
+        critList.push(`Lactate máu = ${markers.Lactate_mmolL} mmol/L (≥ 4,0 mmol/L)`);
+      }
+      if (Number(markers.Blood_pH) > 0 && Number(markers.Blood_pH) < 7.25) {
+        critList.push(`Toan máu nguy kịch pH = ${markers.Blood_pH} (< 7,25)`);
       }
       if (ast.blood_culture_positive) {
         critList.push(`Nuôi cấy vi sinh máu (+) mọc khuẩn: ${ast.organism}`);
       }
-      if (neuroList.some(p => /streptococcus pneumoniae|neisseria meningitidis|haemophilus influenzae|hsv|ev71|agactiae|gbs/i.test(p)) && !csfNormal) {
+      if (neuroList.some(p => /streptococcus pneumoniae|neisseria meningitidis|haemophilus influenzae|hsv|ev71|agalactiae|gbs|listeria/i.test(p)) && !csfNormal) {
         critList.push(`Panel PCR DNT (+) tác nhân nguy kịch: ${neuroList.join(', ')}`);
       }
 
@@ -2677,33 +2779,47 @@
       }
     }
 
-    function handleApproveLabAction(newStatus) {
+    async function handleApproveLabAction(newStatus) {
       const u = appState.currentUser;
       if (!u || (!u.Permissions_JSON.can_validate_lab && !u.Is_Primary_Admin)) {
-        showToast('Chỉ nhân sự Khoa Xét nghiệm (can_validate_lab) hoặc Primary Admin mới có quyền ký duyệt.');
+        showToast('Chỉ nhân sự Khoa Xét nghiệm hoặc Quản trị viên mới có quyền ký duyệt kết quả.');
         return;
       }
       const { patient, lab } = getActivePatientAndLab();
       if (!lab) return;
 
-      // Chặn ký duyệt nếu đang có mâu thuẫn đỏ DNT
+      // Chặn ký duyệt nếu có mâu thuẫn đỏ DNT — SHPT
       const csf = lab.CSF_Analysis_JSON || {};
       const neuro = lab.Multiplex_PCR_Meningitis_JSON || {};
-      const hasDiscordance = (neuro.detected_pathogens || []).some(p => /pneumoniae/i.test(p)) && csf.performed && Number(csf.WBC_cells_uL) < 5;
+      const isNeo = Number(patient.Age_Months || 12) < 1;
+      const hasDiscordance = (neuro.detected_pathogens || []).some(p => /pneumoniae|meningitidis|influenzae|agalactiae|listeria/i.test(p))
+        && csf.performed && Number(csf.WBC_cells_uL) < (isNeo ? 20 : 5) && Number(csf.Protein_gL) < (isNeo ? 1.2 : 0.45);
 
       if (newStatus === 'APPROVED' && hasDiscordance) {
         showToast('CẢNH BÁO ĐỎ: Không thể ký duyệt tự động do mâu thuẫn Tế bào học DNT và PCR! Yêu cầu kiểm tra lại mẫu.');
         return;
       }
 
+      const notes = document.getElementById('labReviewerNotesInput').value;
       lab.Validation_Status = newStatus;
       lab.Reviewer_Email = u.Email;
-      lab.Reviewer_Notes = document.getElementById('labReviewerNotesInput').value;
+      lab.Reviewer_Notes = notes;
 
-      logAuditEvent(u.Email, 'LAB_VALIDATION_' + newStatus, lab.Record_ID, 'SUCCESS');
+      const remoteRes = await callGasApi({
+        action: 'approveLabRecord',
+        auth: getAdminAuthObject(),
+        recordId: lab.Record_ID,
+        validationStatus: newStatus,
+        reviewerNotes: notes,
+        datasetMode: appState.datasetMode
+      });
+
+      logAuditEvent(u.Email, 'LAB_VALIDATION_' + newStatus, lab.Record_ID, (remoteRes && remoteRes.ok) ? 'SUCCESS' : 'LOCAL');
       renderSubsystem2LabEngine(patient, lab);
       renderSubsystem3ParentPortal(patient, lab);
-      showToast(`Đã cập nhật trạng thái thẩm định ${lab.Record_ID} thành ${newStatus}.`);
+      showToast((remoteRes && remoteRes.ok)
+        ? `Đã ký duyệt và lưu kết quả ${lab.Record_ID} lên Google Sheets!`
+        : `Đã cập nhật trạng thái thẩm định ${lab.Record_ID}.`);
     }
 
     /**
@@ -2832,22 +2948,31 @@
       const crp = Number(markers.CRP_mgL || 5.0);
       const plt = Number(cbc.Platelets || 220);
 
-      // Tính chính xác vị trí con trỏ trên 3 vùng màu (0-33%: Xanh, 33-66%: Vàng, 66-100%: Đỏ)
-      const wbcPos = wbc <= 11 ? Math.max(8, Math.round((wbc / 11) * 30)) : (wbc <= 15 ? 36 + Math.round(((wbc - 11) / 4) * 26) : 82);
+      // Hiệu chỉnh ngưỡng Bạch cầu chuẩn theo độ tuổi Nhi khoa (Sơ sinh ≤20, Nhũ nhi ≤15, Trẻ lớn ≤11 G/L)
+      const pAgeM = Number(patient.Age_Months || 12);
+      const wbcUpper = pAgeM < 1 ? 20 : (pAgeM < 12 ? 15 : 11);
+      const wbcLow = pAgeM < 1 ? 5 : 4;
+      const wbcWarnUpper = wbcUpper + 4;
+      const wbcZone = (wbc >= wbcLow && wbc <= wbcUpper) ? 'GREEN' : ((wbc > wbcUpper && wbc <= wbcWarnUpper) ? 'YELLOW' : 'RED');
+      const wbcPos = wbcZone === 'GREEN'
+        ? Math.max(8, Math.min(30, Math.round((wbc / wbcUpper) * 28)))
+        : (wbcZone === 'YELLOW' ? 36 + Math.round(((wbc - wbcUpper) / 4) * 26) : 84);
       const crpPos = crp < 10 ? Math.max(8, Math.round((crp / 10) * 30)) : (crp < 40 ? 36 + Math.round(((crp - 10) / 30) * 26) : 85);
       const pltPos = plt >= 150 ? 20 : (plt >= 100 ? 50 : 85);
 
       const items = [
         {
-          title: 'Tế bào bảo vệ cơ thể (Bạch cầu - WBC)',
+          title: `Tế bào bảo vệ cơ thể (Bạch cầu - WBC • Ngưỡng chuẩn tuổi: ${wbcLow}–${wbcUpper} G/L)`,
           value: wbc + ' G/L',
-          zone: wbc <= 11 ? 'GREEN' : (wbc <= 15 ? 'YELLOW' : 'RED'),
+          zone: wbcZone,
           percent: wbcPos,
-          desc: wbc <= 11
-            ? 'Vùng Xanh (Bình thường): Hệ miễn dịch của bé đang hoạt động cân bằng, ổn định.'
-            : (wbc <= 15
-              ? 'Vùng Vàng (Phản ứng viêm cần chú ý): Cơ thể bé đang huy động thêm các "chiến binh" bạch cầu để chống lại tác nhân gây sốt.'
-              : 'Vùng Đỏ (Nguy cơ cần can thiệp): Phản ứng viêm mạnh, các bác sĩ đang theo dõi sát và điều trị tích cực cho bé.')
+          desc: wbcZone === 'GREEN'
+            ? `Vùng Xanh (Bình thường theo độ tuổi): Số lượng bạch cầu của bé nằm trong ngưỡng an toàn (${wbcLow}–${wbcUpper} G/L).`
+            : (wbcZone === 'YELLOW'
+              ? 'Vùng Vàng (Phản ứng viêm cần chú ý): Cơ thể bé đang huy động thêm bạch cầu để chống lại tác nhân gây sốt.'
+              : (wbc < wbcLow
+                ? 'Vùng Đỏ (Bạch cầu giảm thấp): Thường gặp trong một số đợt nhiễm siêu vi (như Sốt xuất huyết) hoặc nhiễm trùng nặng — bác sĩ đang theo dõi sát cho bé.'
+                : 'Vùng Đỏ (Phản ứng viêm mạnh): Bạch cầu tăng cao so với độ tuổi, các bác sĩ đang đánh giá và điều trị tích cực cho bé.'))
         },
         {
           title: 'Chỉ số phản ứng viêm (CRP định lượng)',
@@ -2904,10 +3029,10 @@
      */
     function updateParacetamolCalculator() {
       const weight = parseFloat(document.getElementById('calcWeightKgInput').value) || 10;
-      const minDose = Math.round(weight * 10);
-      const maxDose = Math.round(weight * 15);
-      const optDose = Math.round(weight * 12.5);
-      const maxDaily = Math.round(weight * 60);
+      const minDose = Math.min(1000, Math.round(weight * 10));
+      const maxDose = Math.min(1000, Math.round(weight * 15));
+      const optDose = Math.min(1000, Math.round(weight * 12.5));
+      const maxDaily = Math.min(4000, Math.round(weight * 60));
 
       document.getElementById('calcDoseRangeText').textContent = `${minDose} mg – ${maxDose} mg / lần`;
       document.getElementById('calcMaxDailyText').textContent = `Liều chuẩn khuyến nghị: ~${optDose} mg/lần • Tối đa: ${maxDaily} mg/24h`;
@@ -3499,6 +3624,12 @@
       }
       if (blob.includes('g6pd')) {
         alerts.push({ sev: 'rose', title: 'CẢNH BÁO DƯỢC DI TRUYỀN: THIẾU MEN G6PD', detail: 'Tránh tuyệt đối các thuốc gây tan máu oxy hóa như Sulfamethoxazole/Trimethoprim (Co-trimoxazole), Nitrofurantoin, Dapsone và Primaquine.' });
+      }
+      if (ageM < 1) {
+        alerts.push({ sev: 'amber', title: 'LƯU Ý AN TOÀN KHÁNG SINH SƠ SINH (< 28 NGÀY TUỔI)', detail: 'CHỐNG CHỈ ĐỊNH Ceftriaxone ở trẻ sơ sinh (nguy cơ vàng da nhân não do đẩy bilirubin khỏi albumin và kết tủa muối canxi tại phổi/thận). Ưu tiên phác đồ Ampicillin + Cefotaxime (hoặc Gentamicin nếu không mang đột biến MT-RNR1).' });
+      }
+      if (blob.includes('mycoplasma')) {
+        alerts.push({ sev: 'sky', title: 'LƯU Ý KHÁNG MACROLIDE Ở MYCOPLASMA PNEUMONIAE (VIỆT NAM / ĐÔNG Á)', detail: 'Tỷ lệ M. pneumoniae mang đột biến 23S rRNA (A2063G/A2064G) kháng Macrolide tại khu vực đạt 80–90%. Nếu trẻ không hạ sốt sau 48–72 giờ điều trị Azithromycin, cân nhắc chuyển Doxycycline (an toàn liệu trình <21 ngày theo AAP Red Book) hoặc Levofloxacin.' });
       }
       return alerts;
     }
